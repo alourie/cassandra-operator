@@ -33,6 +33,14 @@ spec:
   sidecarEnv:
     - name: GOOGLE_APPLICATION_CREDENTIALS
       value: "/tmp/backup-creds/my-service-key.json"
+  userSecretVolumeSource:
+    # example from doc/backup_restore.md
+    secretName: gcp-auth-reference
+    #     type is a workaround for https://github.com/kubernetes/kubernetes/issues/68466
+    type: array
+    items:
+      - key: my-service-key.json
+        path: my-service-key.json
   userConfigMapVolumeSource:
     # example from doc/providers/pks.md
     # the name of the ConfigMap
