@@ -4,6 +4,19 @@
 #
 version: 2
 jobs:
+  style-check:
+    docker:
+      - image: golang:1.12
+    working_directory: /code
+    steps:
+      - checkout
+      - run:
+          name: Check go formatting
+          command: ! go fmt ./... 2>&1 | read
+      - run:
+          name: Check go imports
+          command: ! goimports -l -w . 2>&1 | read
+
   build:
     docker:
       # specify the version you desire here
@@ -11,13 +24,13 @@ jobs:
         auth:
           username: _json_key
           password: $GOOGLE_AUTH
-    
+
     working_directory: ~/cassandra-operator
 
     environment:
       # Customize the JVM maximum heap limit
       MAVEN_OPTS: -Xmx3200m
-    
+
     steps:
       - checkout
 
@@ -144,6 +157,7 @@ workflows:
   version: 2
   build_and_test:
     jobs:
+      - style-check
       - build:
           filters:
             branches:

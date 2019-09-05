@@ -2,11 +2,12 @@ package e2e
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/instaclustr/cassandra-operator/pkg/apis"
 	"github.com/instaclustr/cassandra-operator/pkg/apis/cassandraoperator/v1alpha1"
 	"github.com/instaclustr/cassandra-operator/pkg/common/cluster"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
-	"testing"
 )
 
 const (
