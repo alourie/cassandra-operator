@@ -26,7 +26,7 @@ import (
 const (
 	DataVolumeMountPath           = "/var/lib/cassandra"
 	OperatorConfigVolumeMountPath = "/tmp/operator-config"
-	RackConfigVolumeMountPath     = "/tmp/cassandra-rack-config"
+	RackConfigVolumeMountPath        = "/tmp/cassandra-rack-config"
 	UserConfigVolumeMountPath     = "/tmp/user-config"
 	UserSecretVolumeMountPath     = "/tmp/user-secret"
 	BackupSecretVolumeMountPath   = "/tmp/backup-secret"
