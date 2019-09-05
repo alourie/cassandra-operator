@@ -36,4 +36,6 @@ replace (
 	sigs.k8s.io/controller-tools => sigs.k8s.io/controller-tools v0.1.11-0.20190411181648-9d55346c2bde
 )
 
+replace git.apache.org/thrift.git => github.com/apache/thrift v0.0.0-20180902110319-2566ecd5d999
+
 replace github.com/operator-framework/operator-sdk => github.com/operator-framework/operator-sdk v0.10.0
