@@ -24,7 +24,7 @@ jobs:
             fi
       - run:
           name: Check go imports
-          command: "! goimports -l -w . | read"
+          command: |
             files=$(goimports .)
             if [ -n "$files" ]; then
               echo "The following file(s) don't have imports properly aligned:"
