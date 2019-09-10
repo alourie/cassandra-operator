@@ -15,10 +15,22 @@ jobs:
           command: go mod download
       - run:
           name: Check go formatting
-          command: "! go fmt ./... | read"
+          command: |
+            files=$(go fmt ./...)
+            if [ -n "$files" ]; then
+              echo "The following file(s) are not properly formatted:"
+              echo "$files"
+              exit 1
+            fi
       - run:
           name: Check go imports
           command: "! goimports -l -w . | read"
+            files=$(goimports .)
+            if [ -n "$files" ]; then
+              echo "The following file(s) don't have imports properly aligned:"
+              echo "$files"
+              exit 1
+            fi
 
   build:
     docker:
