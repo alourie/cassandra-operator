@@ -6,8 +6,13 @@ version: 2
 jobs:
   style-check:
     docker:
-      - image: golang:1.12
-    working_directory: /code
+      # specify the version you desire here
+      - image: gcr.io/cassandra-operator/jdk8-gcloud-sdk:latest
+        auth:
+          username: _json_key
+          password: $GOOGLE_AUTH
+
+    working_directory: ~/cassandra-operator
     steps:
       - checkout
       - run:
