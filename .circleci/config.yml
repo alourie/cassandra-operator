@@ -16,18 +16,9 @@ jobs:
       - run:
           name: Check go formatting
           command: |
-            files=$(go fmt ./...)
+            files=$(goimports -l .)
             if [ -n "$files" ]; then
-              echo "The following file(s) are not properly formatted:"
-              echo "$files"
-              exit 1
-            fi
-      - run:
-          name: Check go imports
-          command: |
-            files=$(goimports .)
-            if [ -n "$files" ]; then
-              echo "The following file(s) don't have imports properly aligned:"
+              echo "The following file(s) are not properly formatted or their imports are misaligned. Run go fmt/go import on your code:"
               echo "$files"
               exit 1
             fi
