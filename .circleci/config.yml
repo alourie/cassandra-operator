@@ -12,7 +12,7 @@ jobs:
       - checkout
       - run:
           name: Check go formatting
-          command: "! go fmt ./... 2>&1 | read"
+          command: "! go fmt ./... | read"
       - run:
           name: Check go imports
           command: "! goimports -l -w . 2>&1 | read"
