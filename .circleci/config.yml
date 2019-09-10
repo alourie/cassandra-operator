@@ -11,8 +11,11 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Update go stuff
+          command: go mod download
+      - run:
           name: Check go formatting
-          command: "! go fmt ./... | read"
+          command: "! go fmt ./... 2>&1 | read"
       - run:
           name: Check go imports
           command: "! goimports -l -w . 2>&1 | read"
