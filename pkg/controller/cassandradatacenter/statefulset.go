@@ -10,14 +10,14 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	cassandraoperatorv1alpha1 "github.com/instaclustr/cassandra-operator/pkg/apis/cassandraoperator/v1alpha1"
-	"github.com/instaclustr/cassandra-operator/pkg/common/cluster"
-	"github.com/instaclustr/cassandra-operator/pkg/common/nodestate"
 	"github.com/instaclustr/cassandra-operator/pkg/sidecar"
+	"github.com/instaclustr/cassandra-operator/pkg/common/cluster"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/instaclustr/cassandra-operator/pkg/common/nodestate"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -26,13 +26,13 @@ import (
 const (
 	DataVolumeMountPath           = "/var/lib/cassandra"
 	OperatorConfigVolumeMountPath = "/tmp/operator-config"
-	RackConfigVolumeMountPath        = "/tmp/cassandra-rack-config"
-	UserConfigVolumeMountPath     = "/tmp/user-config"
+	RackConfigVolumeMountPath     = "/tmp/cassandra-rack-config"
+	UserConfigVolumeMountPath         = "/tmp/user-config"
 	UserSecretVolumeMountPath     = "/tmp/user-secret"
 	BackupSecretVolumeMountPath   = "/tmp/backup-secret"
 )
 
-func createOrUpdateStatefulSet(rctx *reconciliationRequestContext, configVolume *corev1.Volume) (*v1beta2.StatefulSet, error) {
+func createOrUpdateStatefulSet(rctx *reconciliationRequestContext,  configVolume *corev1.Volume) (*v1beta2.StatefulSet, error) {
 
 	// Find a rack to reconcile
 	rack, err := findRackToReconcile(rctx)
