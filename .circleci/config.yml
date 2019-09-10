@@ -4,6 +4,24 @@
 #
 version: 2
 jobs:
+  style-check:
+    docker:
+      - image: golang:1.12
+    working_directory: /code
+    steps:
+      - checkout
+      - run:
+          name: Update go stuff
+          command: go get golang.org/x/tools/cmd/goimports && go mod download
+      - run:
+          name: Check go formatting
+          command: |
+            files=$(goimports -l .)
+            if [ -n "$files" ]; then
+              echo "The following file(s) are not properly formatted or their imports are misaligned. Run go fmt/go import on your code:"
+              echo "$files"
+              exit 1
+            fi
   build:
     docker:
       # specify the version you desire here
@@ -11,13 +29,13 @@ jobs:
         auth:
           username: _json_key
           password: $GOOGLE_AUTH
-    
+
     working_directory: ~/cassandra-operator
 
     environment:
       # Customize the JVM maximum heap limit
       MAVEN_OPTS: -Xmx3200m
-    
+
     steps:
       - checkout
 
@@ -109,7 +127,10 @@ workflows:
   version: 2
   build_and_test:
     jobs:
+      - style-check
       - build:
+          requires:
+            - style-check
           filters:
             branches:
               ignore:
@@ -117,8 +138,11 @@ workflows:
                 - superdupertopsecretrewrite
       - test-gcp:
           requires:
+            - style-check
             - release-dev
       - release-dev:
+          requires:
+            - style-check
           filters:
             branches:
               only:
