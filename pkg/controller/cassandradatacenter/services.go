@@ -2,50 +2,23 @@ package cassandradatacenter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	monclientv1 "github.com/coreos/prometheus-operator/pkg/client/versioned/typed/monitoring/v1"
+	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
+	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	"github.com/operator-framework/operator-sdk/pkg/metrics"
-
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	k8serr "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/discovery"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
-
-func createOrUpdatePrometheusService(rctx *reconciliationRequestContext) (*corev1.Service, error) {
-	prometheusService := &corev1.Service{ObjectMeta: DataCenterResourceMetadata(rctx.cdc, "prometheus")}
-	prometheusService.Labels = PrometheusLabels(rctx.cdc)
-
-	logger := rctx.logger.WithValues("Service.Name", prometheusService.Name)
-
-	opresult, err := controllerutil.CreateOrUpdate(context.TODO(), rctx.client, prometheusService, func(_ runtime.Object) error {
-		prometheusService.Spec = corev1.ServiceSpec{
-			ClusterIP: "None",
-			Ports:     prometheusPort.asServicePorts(),
-			Selector:  DataCenterLabels(rctx.cdc),
-		}
-
-		if err := controllerutil.SetControllerReference(rctx.cdc, prometheusService, rctx.scheme); err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	// Only log if something has changed
-	if opresult != controllerutil.OperationResultNone {
-		logger.Info(fmt.Sprintf("Service %s %s.", prometheusService.Name, opresult))
-	}
-
-	return prometheusService, err
-}
 
 func createOrUpdateNodesService(rctx *reconciliationRequestContext) (*corev1.Service, error) {
 	nodesService := &corev1.Service{ObjectMeta: DataCenterResourceMetadata(rctx.cdc, "nodes")}
@@ -57,6 +30,14 @@ func createOrUpdateNodesService(rctx *reconciliationRequestContext) (*corev1.Ser
 			ClusterIP: "None",
 			Ports:     ports{cqlPort, jmxPort}.asServicePorts(),
 			Selector:  DataCenterLabels(rctx.cdc),
+		}
+
+		if rctx.cdc.Spec.PrometheusSupport {
+			nodesService.Spec.Ports = append(nodesService.Spec.Ports, prometheusPort.asServicePort())
+		}
+
+		for k, v := range rctx.cdc.Spec.NodesServiceLabels {
+			nodesService.Labels[k] = v
 		}
 
 		if err := controllerutil.SetControllerReference(rctx.cdc, nodesService, rctx.scheme); err != nil {
@@ -114,34 +95,92 @@ func createOrUpdateSeedNodesService(rctx *reconciliationRequestContext) (*corev1
 	return seedNodesService, err
 }
 
-func createOrUpdatePrometheusServiceMonitor(rctx *reconciliationRequestContext) error {
+func createOrUpdatePrometheusServiceMonitor(svc *corev1.Service) error {
 	cfg, err := config.GetConfig()
 	if err != nil {
 		return err
 	}
 
-	prometheusService, err := createOrUpdatePrometheusService(rctx)
+	// Verify ServiceMonitor CRD exists on cluster.
+	dc := discovery.NewDiscoveryClientForConfigOrDie(cfg)
+	apiVersion := "monitoring.coreos.com/v1"
+	kind := "ServiceMonitor"
+
+	exists, err := k8sutil.ResourceExists(dc, apiVersion, kind)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return metrics.ErrServiceMonitorNotPresent
+	}
+
+	sm, err := generateServiceMonitor(svc, []string{prometheusPort.name})
 	if err != nil {
 		return err
 	}
 
-	if _, err := metrics.CreateServiceMonitors(cfg, rctx.cdc.Namespace, []*corev1.Service{prometheusService}); err != nil {
-		// If this operator is deployed to a cluster without the prometheus-operator running, it will return
-		// ErrServiceMonitorNotPresent, which can be used to safely skip ServiceMonitor creation.
-		if err == metrics.ErrServiceMonitorNotPresent {
-			log.Info("Install prometheus-operator in your cluster to create ServiceMonitor objects", "error", err.Error())
-			return nil
-		} else if errors.IsAlreadyExists(err) {
-			// TODO: maybe recreate?
-			log.Info(fmt.Sprintf("ServiceMonitor %v already exists, skipping creation", prometheusService.Name))
+	mclient := monclientv1.NewForConfigOrDie(cfg)
+
+	_, err = mclient.ServiceMonitors(svc.Namespace).Create(sm)
+	if err != nil {
+		if k8serr.IsAlreadyExists(err) {
+			log.Info(fmt.Sprintf("ServiceMonitor %s already exists, skipping creation", svc.Name))
 			return nil
 		} else {
-			log.Info("Could not create ServiceMonitor object", "error", err.Error())
 			return err
 		}
-	} else {
-		log.Info(fmt.Sprintf("Created ServiceMonitor object for %v", prometheusService.Name))
 	}
 
 	return nil
+}
+
+// generateServiceMonitor generates a prometheus-operator ServiceMonitor object
+// based on the passed Service object and a slice of port names.
+func generateServiceMonitor(s *v1.Service, portNames []string) (*monitoringv1.ServiceMonitor, error) {
+	labels := make(map[string]string)
+	for k, v := range s.ObjectMeta.Labels {
+		labels[k] = v
+	}
+
+	var endpoints []monitoringv1.Endpoint
+	for _, pn := range portNames {
+		found := false
+		for _, port := range s.Spec.Ports {
+			if port.Name == pn {
+				found = true
+				endpoints = append(endpoints, monitoringv1.Endpoint{Port: port.Name})
+			}
+		}
+		if !found {
+			log.Info(fmt.Sprintf("Service %s doesn't have a port named '%s'", s.Name, pn))
+		}
+	}
+
+	if len(endpoints) == 0 {
+		return nil, errors.New("ServiceMonitor has no valid endpoints")
+	}
+
+	return &monitoringv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      s.ObjectMeta.Name,
+			Namespace: s.ObjectMeta.Namespace,
+			Labels:    labels,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "v1",
+					BlockOwnerDeletion: boolPointer(true),
+					Controller:         boolPointer(true),
+					Kind:               "Service",
+					Name:               s.Name,
+					UID:                s.UID,
+				},
+			},
+		},
+		Spec: monitoringv1.ServiceMonitorSpec{
+			Selector: metav1.LabelSelector{
+				MatchLabels: labels,
+			},
+			Endpoints: endpoints,
+		},
+	}, nil
 }
