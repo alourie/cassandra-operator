@@ -311,8 +311,8 @@ func (in *CassandraDataCenterSpec) DeepCopyInto(out *CassandraDataCenterSpec) {
 		*out = new(v1.PersistentVolumeClaimSpec)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.PrometheusServiceMonitorLabels != nil {
-		in, out := &in.PrometheusServiceMonitorLabels, &out.PrometheusServiceMonitorLabels
+	if in.NodesServiceLabels != nil {
+		in, out := &in.NodesServiceLabels, &out.NodesServiceLabels
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val

@@ -51,12 +51,12 @@ spec:
             nodes:
               format: int32
               type: integer
-            optimizeKernelParams:
-              type: boolean
-            prometheusServiceMonitorLabels:
+            nodesServiceLabels:
               additionalProperties:
                 type: string
               type: object
+            optimizeKernelParams:
+              type: boolean
             prometheusSupport:
               type: boolean
             racks:

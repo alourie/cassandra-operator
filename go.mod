@@ -1,8 +1,7 @@
 module github.com/instaclustr/cassandra-operator
 
 require (
-	github.com/NYTimes/gziphandler v1.0.1 // indirect
-	github.com/coreos/prometheus-operator v0.32.0 // indirect
+	github.com/coreos/prometheus-operator v0.32.0
 	github.com/go-logr/logr v0.1.0
 	github.com/go-openapi/spec v0.19.0
 	github.com/go-resty/resty/v2 v2.0.0
