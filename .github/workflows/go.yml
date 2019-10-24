@@ -21,4 +21,5 @@ jobs:
     - name: Validate repository
       run: |
         pwd
+        ls -la
         GO111MODULE=on .circleci/validate_repo.sh
