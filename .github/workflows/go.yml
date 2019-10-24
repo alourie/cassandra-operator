@@ -22,4 +22,5 @@ jobs:
       run: |
         pwd
         ls -la
+        ls -la .circleci
         GO111MODULE=on .circleci/validate_repo.sh
